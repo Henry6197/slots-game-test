@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slots Game</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a0533 0%, #0d001a 50%, #1a0533 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      text-align: center;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #ffd700, #ff6ec7, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: none;
+      letter-spacing: 2px;
+    }
+
+    /* Jackpot banner */
+    #jackpot-banner {
+      font-size: 1rem;
+      color: #ffd700;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    #jackpot-banner span { font-weight: bold; font-size: 1.2rem; }
+
+    /* Balance */
+    #balance-display {
+      font-size: 1.1rem;
+      margin-bottom: 14px;
+      color: #a0ffa0;
+      text-align: center;
+    }
+    #balance-display span { font-weight: bold; font-size: 1.3rem; }
+
+    /* Buddy text */
+    #buddy-text {
+      font-style: italic;
+      color: #ccc;
+      min-height: 24px;
+      margin-bottom: 14px;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    /* Big message overlay */
+    #big-message {
+      position: fixed;
+      inset: 0;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      background: rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+    #big-message.show { display: flex; }
+    #big-message span {
+      font-size: 3rem;
+      font-weight: 900;
+      color: #ffd700;
+      text-shadow: 0 0 30px #ffd700, 0 0 60px #ff6ec7;
+      animation: pulse 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes pulse { to { transform: scale(1.08); } }
+
+    /* Machine frame */
+    .machine {
+      background: linear-gradient(180deg, #2a1045 0%, #1a0a2e 100%);
+      border: 3px solid #ffd700;
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.15), inset 0 0 60px rgba(0,0,0,0.4);
+      max-width: 480px;
+      width: 100%;
+    }
+
+    /* Reel grid */
+    .reel-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 6px;
+      flex: 1;
+    }
+
+    .reel {
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 72px;
+      background: #0d0020;
+      border: 2px solid #444;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.3s;
+    }
+    .reel.win { border-color: #ffd700; box-shadow: 0 0 14px #ffd700; }
+
+    /* Middle (payline) row stands out */
+    .reel.middle {
+      background: #180038;
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+      font-size: 32px;
+      max-height: 78px;
+    }
+
+    /* Dim the non-paying top & bottom rows */
+    .reel.dimmed {
+      opacity: 0.45;
+      border-color: #333;
+    }
+
+    /* Payline arrow markers */
+    .reel-grid-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .payline-arrow {
+      font-size: 1.3rem;
+      color: #ffd700;
+      line-height: 1;
+      /* vertically centre on the middle row */
+      align-self: center;
+      text-shadow: 0 0 6px #ffd700;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .controls label {
+      font-size: 0.95rem;
+      color: #ccc;
+    }
+
+    #bet {
+      width: 80px;
+      padding: 8px 10px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      background: #1a0a2e;
+      color: #ffd700;
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+    }
+    #bet:focus { box-shadow: 0 0 8px #ffd700; }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #spin {
+      background: linear-gradient(180deg, #00c853, #009624);
+      color: #fff;
+      font-size: 1.1rem;
+      padding: 10px 28px;
+      box-shadow: 0 4px 14px rgba(0, 200, 83, 0.4);
+    }
+    #spin:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(0, 200, 83, 0.7); }
+
+    #max {
+      background: linear-gradient(180deg, #ff6d00, #e65100);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(255, 109, 0, 0.3);
+    }
+    #max:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(255, 109, 0, 0.6); }
+
+    #auto-spin {
+      background: linear-gradient(180deg, #7c4dff, #6200ea);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(124, 77, 255, 0.3);
+    }
+    #auto-spin:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(124, 77, 255, 0.6); }
+    #auto-spin.active { background: linear-gradient(180deg, #ff1744, #d50000); }
+
+    /* Log */
+    #slot-log {
+      max-height: 140px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.35);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: #bbb;
+      line-height: 1.5;
+    }
+    #slot-log div { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0; }
+
+    /* Confetti */
+    .confetti-piece {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 999;
+      animation: confetti-fall linear forwards;
+    }
+    @keyframes confetti-fall {
+      0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+
+    /* Payout table */
+    .payout-table {
+      margin-top: 20px;
+      max-width: 480px;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+    .payout-table h2 {
+      font-size: 1rem;
+      color: #ffd700;
+      margin-bottom: 8px;
+    }
+    .payout-table table { width: 100%; border-collapse: collapse; }
+    .payout-table td { padding: 4px 6px; }
+    .payout-table tr:nth-child(odd) { background: rgba(255,255,255,0.03); }
+    .payout-table td:last-child { text-align: right; color: #a0ffa0; }
+  </style>
+</head>
+<body>
+
+  <h1>🎰 SLOTS 🎰</h1>
+  <div id="jackpot-banner">JACKPOT: <span id="jackpot-amount">$0</span></div>
+  <div id="balance-display">Balance: <span id="balance-value">$1000</span></div>
+  <div id="buddy-text">Good luck out there!</div>
+
+  <div class="machine">
+    <!-- 5×3 reel grid (row-major: row0-col0 … row2-col4) -->
+    <div class="reel-grid-wrapper">
+      <div class="payline-arrow">▶</div>
+      <div class="reel-grid">
+        <div class="reel dimmed" data-index="0">🍒</div>
+        <div class="reel dimmed" data-index="1">🍋</div>
+        <div class="reel dimmed" data-index="2">7️⃣</div>
+        <div class="reel dimmed" data-index="3">🍇</div>
+        <div class="reel dimmed" data-index="4">🏦</div>
+
+        <div class="reel middle" data-index="5">🍉</div>
+        <div class="reel middle" data-index="6">🍒</div>
+        <div class="reel middle" data-index="7">🍋</div>
+        <div class="reel middle" data-index="8">7️⃣</div>
+        <div class="reel middle" data-index="9">🍇</div>
+
+        <div class="reel dimmed" data-index="10">🏦</div>
+        <div class="reel dimmed" data-index="11">🍉</div>
+        <div class="reel dimmed" data-index="12">🍒</div>
+        <div class="reel dimmed" data-index="13">🍋</div>
+        <div class="reel dimmed" data-index="14">7️⃣</div>
+      </div>
+      <div class="payline-arrow">◀</div>
+    </div>
+
+    <div class="controls">
+      <label for="bet">Bet $</label>
+      <input type="number" id="bet" value="10" min="1">
+      <button id="spin">🎰 SPIN</button>
+      <button id="max">💰 MAX BET</button>
+      <button id="auto-spin">🔄 AUTO SPIN</button>
+    </div>
+
+    <div id="slot-log"></div>
+  </div>
+
+  <div class="payout-table">
+    <h2>Payouts (per bet)</h2>
+    <table>
+      <tr><td>3 in a row (middle row)</td><td>3×</td></tr>
+      <tr><td>4 in a row (middle row)</td><td>6×</td></tr>
+      <tr><td>5 in a row (middle row)</td><td>12× + JACKPOT</td></tr>
+      <tr><td>🏦 bonus</td><td>+1×</td></tr>
+      <tr><td>7️⃣ bonus</td><td>+2×</td></tr>
+    </table>
+  </div>
+
+  <!-- Big-message overlay -->
+  <div id="big-message"><span></span></div>
+
+  <!-- vc shim: lightweight stand-in so slots.js works standalone -->
+  <script>
+    (function(){
+      let balance = 1000;
+      let jackpot = 20000;
+
+      function updateUI(){
+        const bv = document.getElementById('balance-value');
+        const ja = document.getElementById('jackpot-amount');
+        if(bv) bv.textContent = '$' + balance.toLocaleString();
+        if(ja) ja.textContent = '$' + jackpot.toLocaleString();
+      }
+
+      window.vc = {
+        readBalance(){ return balance; },
+        writeBalance(v){ balance = Math.max(0, Math.round(v)); updateUI(); },
+        addToJackpot(bet){
+          const contrib = Math.round(bet * 0.02);
+          jackpot += contrib;
+          updateUI();
+          return contrib;
+        },
+        winJackpot(){
+          const won = jackpot;
+          jackpot = 0;
+          updateUI();
+          return won;
+        },
+        incrementSlotSpins(){},
+        setBuddyText(msg){
+          const el = document.getElementById('buddy-text');
+          if(el) el.textContent = msg;
+        },
+        showBigMessage(msg, duration){
+          const el = document.getElementById('big-message');
+          if(!el) return;
+          el.querySelector('span').textContent = msg;
+          el.classList.add('show');
+          setTimeout(()=> el.classList.remove('show'), duration || 1500);
+        },
+        confetti(count){
+          const colors = ['#ffd700','#ff6ec7','#00e676','#448aff','#ff3d00','#e040fb'];
+          for(let i = 0; i < (count || 30); i++){
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            piece.style.left = Math.random()*100 + 'vw';
+            piece.style.top = '-10px';
+            piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+            piece.style.animationDuration = (1.5 + Math.random()*2) + 's';
+            piece.style.animationDelay = Math.random()*0.5 + 's';
+            document.body.appendChild(piece);
+            setTimeout(()=> piece.remove(), 4000);
+          }
+        }
+      };
+
+      updateUI();
+    })();
+  </script>
+  <script src="slots.js"></script>
+</body>
+</html>
